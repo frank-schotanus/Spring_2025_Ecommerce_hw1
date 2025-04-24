@@ -1,161 +1,135 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using System.Threading.Tasks;
 using Library.eCommerce.Services;
 
 namespace Library.eCommerce.Models
 {
-    //here
-    public class ShoppingCart
+    public class Cart
     {
-        public Dictionary<int, int> ItemsInCart
+        public Dictionary<int, int> Contents { get; set; }
+
+        public Cart()
         {
-            get;
-            set;
-        }
-        public ShoppingCart()
-        {
-            ItemsInCart = new Dictionary<int, int>();
+            Contents = new();
         }
 
-        public bool AddItem(int itemID, int itemQuantity)
+        public bool AddToCart(int productId, int quantity)
         {
-            var product = ProductServiceProxy.Current.Products.FirstOrDefault(P => P.Id == itemID);
+            var inventoryItem = ProductServiceProxy.Current.Products.FirstOrDefault(item => item?.Id == productId);
 
-            if (product == null)
+            if (inventoryItem is null)
             {
-                Console.WriteLine("This product is not in our inventory.");
+                Console.WriteLine("Product not found in inventory.");
                 return false;
             }
 
-            if (itemQuantity <= 0 || itemQuantity > product.Quantity)
+            if (quantity <= 0 || quantity > inventoryItem.Quantity)
             {
-                Console.WriteLine("There is not enough of the item in stock.");
+                Console.WriteLine("Invalid quantity. Not enough stock.");
                 return false;
             }
 
-            product.Quantity = product.Quantity - itemQuantity;
+            inventoryItem.Quantity -= quantity;
 
-            if (ItemsInCart.ContainsKey(itemID))
+            if (Contents.ContainsKey(productId))
             {
-                ItemsInCart[itemID] = ItemsInCart[itemID] + itemQuantity;
+                Contents[productId] += quantity;
             }
             else
             {
-                ItemsInCart[itemID] = itemQuantity;
+                Contents.Add(productId, quantity);
             }
 
-            Console.WriteLine($"{itemQuantity} of {product.Name} added to the cart.");
+            Console.WriteLine($"{quantity} x {inventoryItem.Name} added to cart.");
             return true;
-
         }
 
-        public string? Display
+        public string? Summary => $"Cart Items: [{string.Join(", ", Contents.Select(kvp => $"ID {kvp.Key} → Qty {kvp.Value}"))}]";
+
+        public bool RemoveItem(int productId, int quantity)
         {
-            get
+            if (!Contents.ContainsKey(productId))
             {
-                return $"Item ID: {ItemsInCart.Keys}, Item Quantity: {ItemsInCart.Values}";
-            }
-        }
-
-        public bool removeFromCart(int itemID, int itemQuantity)
-        {
-            if(ItemsInCart.ContainsKey(itemID) == false)
-            {
-                Console.WriteLine("The specified item is not in your cart.");
+                Console.WriteLine("Item not found in cart.");
                 return false;
             }
 
-            if (itemQuantity <= 0)
+            if (quantity <= 0)
             {
-                Console.WriteLine("Please enter a positive amount of items.");
+                Console.WriteLine("Quantity must be positive.");
                 return false;
             }
 
-            if (itemQuantity > ItemsInCart[itemID])
+            int existing = Contents[productId];
+
+            if (quantity > existing)
             {
-                Console.WriteLine($"You are unable to remove more than {ItemsInCart[itemID]} items.");
+                Console.WriteLine($"Cannot remove more than present: {existing} items.");
                 return false;
             }
 
-            var product = ProductServiceProxy.Current.GetById(itemID);
-            if(product == null)
+            var product = ProductServiceProxy.Current.GetById(productId);
+            if (product == null)
             {
-                Console.WriteLine("Product appears to be null, ERROR.");
+                Console.WriteLine("Error: Corresponding product is null.");
                 return false;
             }
 
-            ItemsInCart[itemID] -= itemQuantity;
-            product.Quantity += itemQuantity;
+            Contents[productId] -= quantity;
+            product.Quantity += quantity;
             ProductServiceProxy.Current.AddOrUpdate(product);
 
-            if (ItemsInCart[itemID] == 0)
+            if (Contents[productId] == 0)
             {
-                ItemsInCart.Remove(itemID);
-                Console.WriteLine($" Product ID: {itemID} has been removed from the cart.");
+                Contents.Remove(productId);
+                Console.WriteLine($"Removed item ID {productId} from cart.");
             }
 
             return true;
         }
 
-        public void PrintCart()
+        public void ShowCart()
         {
-            if (ItemsInCart.Any() == false)
+            if (!Contents.Any())
             {
-                Console.WriteLine("Your cart is empty.");
+                Console.WriteLine("Cart is empty.");
                 return;
             }
 
-            Console.WriteLine("-------Cart Contents-------");
-
-            foreach (var x in ItemsInCart)
+            Console.WriteLine("===Your Cart===");
+            foreach (var (key, value) in Contents)
             {
-                var product = ProductServiceProxy.Current.Products.FirstOrDefault(p => p.Id == x.Key);
-                if (product != null)
+                var item = ProductServiceProxy.Current.Products.FirstOrDefault(p => p?.Id == key);
+                if (item != null)
                 {
-                    Console.WriteLine($"ID: {x.Key} \t Name: {product.Name} \t Quantity: {x.Value} \t Price: {product.Price} \t ");
+                    Console.WriteLine($"[ID: {key}] {item.Name} x{value}, ${item.Price}");
                 }
-
             }
         }
 
-        public bool cartIsEmpty()
-        {
-            if(ItemsInCart.Any() == false)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
+        public bool IsEmpty() => !Contents.Any();
 
-        //Shoping cart<dictionary> = ID and Quantity
-        //ProductServiceProxy = name and prive
-        public void printReceipt()
+        public void Checkout()
         {
-            Console.WriteLine("-----Your Receipt-----");
-            double total = 0;
-            foreach (var x in ItemsInCart)
+            Console.WriteLine("===Receipt===");
+            double total = 0.0;
+
+            foreach (var (id, qty) in Contents)
             {
-                var product = ProductServiceProxy.Current.Products.FirstOrDefault(p => p.Id == x.Key);
-                if (product != null)
+                var item = ProductServiceProxy.Current.Products.FirstOrDefault(p => p?.Id == id);
+                if (item != null)
                 {
-                    Console.WriteLine($"ID: {x.Key} \t Name: {product.Name} \t Quantity: {x.Value} \t Price: {product.Price} \t ");
-                    total += (x.Value * product.Price);
+                    Console.WriteLine($"{item.Name} x{qty} = ${item.Price * qty}");
+                    total += item.Price * qty;
                 }
             }
 
-            Console.WriteLine($"Total(sales tax included): {total * 1.07}");
-        }
-        public override string ToString()
-        {
-            return Display ?? string.Empty;
+            var taxRate = 0.07;
+            var finalTotal = total * (1 + taxRate);
+            Console.WriteLine($"Total (includiong 7% tax): ${finalTotal:F2}");
         }
 
+        public override string ToString() => Summary ?? "No items in cart.";
     }
 }

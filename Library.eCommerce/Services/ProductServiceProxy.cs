@@ -11,15 +11,9 @@ namespace Library.eCommerce.Services
     {
         private ProductServiceProxy()
         {
-            Products = new List<Product?>
-            {
-                new Product{Id = 1, Name = "Product 1"},
-                new Product{Id = 2, Name = "Product 2"},
-                new Product{Id = 3, Name = "Product 3"}
-            };
+            Products = new List<Product?>();
         }
 
-        //here
         private int LastKey
         {
             get
@@ -34,7 +28,8 @@ namespace Library.eCommerce.Services
         }
 
         private static ProductServiceProxy? instance;
-        private static object instanceLock = new object();
+        private static readonly object instanceLock = new object();
+
         public static ProductServiceProxy Current
         {
             get
@@ -53,23 +48,16 @@ namespace Library.eCommerce.Services
 
         public List<Product?> Products { get; private set; }
 
-
         public Product AddOrUpdate(Product product)
         {
-            var existingProduct = Products.FirstOrDefault(p => p.Id == product.Id);
+            var existingProduct = Products.FirstOrDefault(p => p?.Id == product.Id);
 
             if (product.Id == 0)
             {
                 product.Id = LastKey + 1;
                 Products.Add(product);
             }
-            else
-            {
-                existingProduct.Quantity = product.Quantity;
-                existingProduct.Name = product.Name;
-                existingProduct.Price = product.Price;
-            }
-
+          
             return product;
         }
 
@@ -80,7 +68,7 @@ namespace Library.eCommerce.Services
                 return null;
             }
 
-            Product? product = Products.FirstOrDefault(p => p.Id == id);
+            Product? product = Products.FirstOrDefault(p => p?.Id == id);
             Products.Remove(product);
 
             return product;
@@ -88,10 +76,7 @@ namespace Library.eCommerce.Services
 
         public Product? GetById(int id)
         {
-            return Products.FirstOrDefault(p => p.Id == id);
+            return Products.FirstOrDefault(p => p?.Id == id);
         }
-
     }
-
-
 }

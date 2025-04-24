@@ -1,11 +1,9 @@
-﻿//// See https://aka.ms/new-console-template for more information
-//Console.WriteLine("Hello, World!");
-
-using Library.eCommerce.Models;
+﻿using Library.eCommerce.Models;
 using Library.eCommerce.Services;
 using Spring2025_Ecommerce.Models;
 using System;
-using System.Xml.Serialization;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace MyApp
 {
@@ -13,171 +11,160 @@ namespace MyApp
     {
         static void Main(string[] args)
         {
-
-            //here
-
             Console.WriteLine("Welcome to Amazon!");
 
-            Console.WriteLine("C. Create new inventory item");
-            Console.WriteLine("R. Read all inventory items");
-            Console.WriteLine("U. Update an inventory item");
-            Console.WriteLine("D. Delete an inventory item");
-            Console.WriteLine("A. Add an item to your shopping cart");
-            Console.WriteLine("T. Remove an item from your shopping cart");
-            Console.WriteLine("S. Show the contents of your shopping cart");
-            Console.WriteLine("X. Checkout");
-            Console.WriteLine("Q. Quit");
+            ShowOptions();
 
-            List<Product?> list = ProductServiceProxy.Current.Products;
+            var inventoryList = ProductServiceProxy.Current.Products;
+            var userCart = new Cart();
 
-            ShoppingCart customerCart = new ShoppingCart();
+            char userInput;
 
-            char choice;
             do
             {
-                string? input = Console.ReadLine();
-                choice = input[0];
-                switch (choice)
+                string? rawInput = Console.ReadLine();
+                userInput = char.ToLowerInvariant(rawInput?[0] ?? ' ');
+
+                switch (userInput)
                 {
-                    case 'C':
                     case 'c':
-                        Console.WriteLine("Please enter the name, price, and quantity of the product you want to add.");
-                        ProductServiceProxy.Current.AddOrUpdate(new Product
+                        Console.WriteLine("Provide product name, price, and stock (newline separated):");
+                        var newProduct = new Product
                         {
                             Name = Console.ReadLine(),
-                            Price = double.Parse(Console.ReadLine()),
-                            Quantity = int.Parse(Console.ReadLine())
-                        });
+                            Price = Convert.ToDouble(Console.ReadLine()),
+                            Quantity = Convert.ToInt32(Console.ReadLine())
+                        };
+                        ProductServiceProxy.Current.AddOrUpdate(newProduct);
                         break;
-                    case 'R':
+
                     case 'r':
-
-                        list.ForEach(Console.WriteLine);
+                        inventoryList.ForEach(Console.WriteLine);
                         break;
-                    case 'U':
+
                     case 'u':
-                        //select one of the products
-                        list.ForEach(Console.WriteLine);
-                        Console.WriteLine("Enter the Id of the product you would like to update.");
-                        int selection = int.Parse(Console.ReadLine() ?? "-1");
-                        var selectedProd = list.FirstOrDefault(p => p.Id == selection);
+                        inventoryList.ForEach(Console.WriteLine);
+                        Console.WriteLine("Enter ID of product to modify:");
+                        int idToEdit = int.Parse(Console.ReadLine() ?? "-1");
+                        var item = inventoryList.FirstOrDefault(p => p.Id == idToEdit);
 
-                        if (selectedProd != null)
+                        if (item != null)
                         {
-                            Console.WriteLine("How would you like to update the product?");
-                            Console.WriteLine("1. Name");
-                            Console.WriteLine("2. Price");
-                            Console.WriteLine("3. Quantity");
-                            Console.WriteLine("Enter your number choice, please.");
+                            Console.WriteLine("Select field to update:\n1. Name\n2. Price\n3. Quantity");
+                            int field = int.Parse(Console.ReadLine() ?? "0");
 
-                            int updateChoice = int.Parse(Console.ReadLine() ?? "-1");
-
-                            if(updateChoice == 1)
+                            switch (field)
                             {
-                                Console.WriteLine("Enter the updated name.");
-                                selectedProd.Name = Console.ReadLine() ?? "ERROR";
-                                ProductServiceProxy.Current.AddOrUpdate(selectedProd);
-                            }
-                            else if(updateChoice == 2)
-                            {
-                                Console.WriteLine("Enter the updated price.");
-                                selectedProd.Price = double.Parse(Console.ReadLine() ?? "-1");
-                                ProductServiceProxy.Current.AddOrUpdate(selectedProd);
-                            }
-                            else if(updateChoice == 3)
-                            {
-                                Console.WriteLine("Enter the updated quantity.");
-                                selectedProd.Quantity = int.Parse(Console.ReadLine() ?? "-1");
-                                ProductServiceProxy.Current.AddOrUpdate(selectedProd);
-                            }
-                            else
-                            {
-                                Console.WriteLine("Invalid choice. Returning to the menu.");
-
-                                Console.WriteLine("C. Create new inventory item");
-                                Console.WriteLine("R. Read all inventory items");
-                                Console.WriteLine("U. Update an inventory item");
-                                Console.WriteLine("D. Delete an inventory item");
-                                Console.WriteLine("A. Add an item to your shopping cart");
-                                Console.WriteLine("T. Remove an item from your shopping cart");
-                                Console.WriteLine("S. Show the contents of your shopping cart");
-                                Console.WriteLine("X. Checkout");
-                                Console.WriteLine("Q. Quit");
+                                case 1:
+                                    Console.Write("New Name: ");
+                                    item.Name = Console.ReadLine() ?? "N/A";
+                                    break;
+                                case 2:
+                                    Console.Write("New Price: ");
+                                    item.Price = double.Parse(Console.ReadLine() ?? "0");
+                                    break;
+                                case 3:
+                                    Console.Write("New Quantity: ");
+                                    item.Quantity = int.Parse(Console.ReadLine() ?? "0");
+                                    break;
+                                default:
+                                    Console.WriteLine("Invalid selection. Going back to menu.");
+                                    ShowOptions();
+                                    break;
                             }
 
-                        }
-                        break;
-                    case 'D':
-                    case 'd':
-                        //select one of the products
-                        //throw it away
-                        Console.WriteLine("Which product would you like to update?");
-                        selection = int.Parse(Console.ReadLine() ?? "-1");
-                        ProductServiceProxy.Current.Delete(selection);
-                        break;
-                    case 'A':
-                    case 'a':
-                        Console.WriteLine("Choose which product you would like to add to your cart (Enter the ID Number): ");
-                        list.ForEach(Console.WriteLine);
-                        int addThisProduct = int.Parse(Console.ReadLine() ?? "-1");
-                        var productSelected = list.FirstOrDefault(p => p.Id == addThisProduct);
-
-                        if (productSelected == null)
-                        {
-                            Console.WriteLine("Null Product.");
+                            ProductServiceProxy.Current.AddOrUpdate(item);
                         }
                         else
                         {
-                            Console.WriteLine("Please enter the quantity you would like: ");
-                            int quantitySpecified = int.Parse(Console.ReadLine());
-                            customerCart.AddItem(addThisProduct, quantitySpecified);
+                            Console.WriteLine("Product not found.");
                         }
                         break;
-                    case 'T':
-                    case 't':
-                        if(customerCart.cartIsEmpty() == true)
+
+                    case 'd':
+                        Console.WriteLine("Enter ID of product to delete:");
+                        int targetId = int.Parse(Console.ReadLine() ?? "-1");
+                        ProductServiceProxy.Current.Delete(targetId);
+                        break;
+
+                    case 'a':
+                        Console.WriteLine("Select a product by ID to add to cart:");
+                        inventoryList.ForEach(Console.WriteLine);
+                        int chosenId = int.Parse(Console.ReadLine() ?? "-1");
+                        var chosenProduct = inventoryList.FirstOrDefault(p => p.Id == chosenId);
+
+                        if (chosenProduct == null)
                         {
-                            Console.WriteLine("Your cart is empty.");
+                            Console.WriteLine("Item does not exist.");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Enter quantity:");
+                            int qty = int.Parse(Console.ReadLine() ?? "0");
+                            userCart.AddToCart(chosenId, qty);
+                        }
+                        break;
+
+                    case 'x':
+                        if (userCart.IsEmpty())
+                        {
+                            Console.WriteLine("Cart is currently empty.");
                             break;
                         }
 
-                        Console.WriteLine("Choose which product you would like to remove from the cart (Enter the ID Number): ");
-                        customerCart.PrintCart();
-                        int removeThisProduct = int.Parse(Console.ReadLine() ?? "-1");
-                        Console.WriteLine($"Product to be removed ID: {removeThisProduct}");
+                        Console.WriteLine("Enter ID of product to remove:");
+                        userCart.ShowCart();
+                        int itemToRemove = int.Parse(Console.ReadLine() ?? "-1");
 
-                        if (customerCart.ItemsInCart.ContainsKey(removeThisProduct) == false)
+                        if (!userCart.Contents.ContainsKey(itemToRemove))
                         {
-                            Console.WriteLine("Null Product");
+                            Console.WriteLine("Invalid ID.");
                         }
                         else
                         {
-                            Console.WriteLine("Please enter the quantity you would like to remove: ");
-                            int quantitySpecified = int.Parse(Console.ReadLine());
-
-                            customerCart.removeFromCart(removeThisProduct, quantitySpecified);
+                            Console.WriteLine("Enter quantity to remove:");
+                            int removeQty = int.Parse(Console.ReadLine() ?? "0");
+                            userCart.RemoveItem(itemToRemove, removeQty);
                         }
                         break;
-                    case 'S':
-                    case 's':
-                        customerCart.PrintCart();
+
+                    case 'p':
+                        userCart.ShowCart();
                         break;
-                    case 'X':
-                    case 'x':
-                        customerCart.printReceipt();
+
+                    case 'l':
+                        userCart.Checkout();
                         break;
-                    case 'Q':
+
                     case 'q':
                         break;
+
                     default:
-                        Console.WriteLine("Error: Unknown Command");
+                        Console.WriteLine("Unrecognized command.");
                         break;
                 }
-            } while (choice != 'Q' && choice != 'q');
 
-            Console.ReadLine();
+                Console.WriteLine();
+                ShowOptions();
+
+            } while (userInput != 'q');
+
+            Console.WriteLine("Thanks for shopping with us. See you next time!");
+        }
+
+        static void ShowOptions()
+        {
+            Console.WriteLine("\n===== MENU =====");
+            Console.WriteLine("C - Create New Product");
+            Console.WriteLine("R - View All Products");
+            Console.WriteLine("U - Update Existing Product");
+            Console.WriteLine("D - Delete Product");
+            Console.WriteLine("A - Add Item to Cart");
+            Console.WriteLine("P - View Cart");
+            Console.WriteLine("X - Remove Item from Cart");
+            Console.WriteLine("L - Checkout");
+            Console.WriteLine("Q - Quit");
+            Console.WriteLine("================");
         }
     }
-
-
 }
